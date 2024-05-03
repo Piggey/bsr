@@ -43,4 +43,6 @@ func (s *Server) Close() error {
 	return s.udpConn.Close()
 }
 
-func (s *Server) Listen() {}
+func (s *Server) Listen() {
+	panic("to be implemented")
+}
