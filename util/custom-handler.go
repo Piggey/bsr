@@ -49,7 +49,7 @@ func (h *CustomHandler) Handle(ctx context.Context, r slog.Record) error {
 		return true
 	})
 
-	timeStr := r.Time.Format("[" + time.RFC3339Nano + "]")
+	timeStr := r.Time.Format("[" + time.RFC3339 + "]")
 	msg := color.CyanString(r.Message)
 
 	h.l.Println(timeStr, h.name, h.addrport, level, msg, color.WhiteString(fields))
