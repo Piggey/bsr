@@ -1,22 +1,23 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/Piggey/bsr/client"
 	"github.com/Piggey/bsr/server"
+	"github.com/alecthomas/kong"
 )
 
 func main() {
-	fmt.Println("siema witam")
-	srv := server.NewServer(":5000")
-	defer srv.Close()
+	ctx := kong.Parse(&Args)
 
-	srv.Listen()
-	fmt.Printf("srv: %v\n", srv)
+	switch ctx.Command() {
+	case "server":
+		srv := server.NewServer(Args.Server.Addr)
+		defer srv.Close()
 
-	client := client.NewClient("127.0.0.1:5000")
-	defer client.Close()
+		srv.Listen()
 
-	fmt.Printf("client: %v\n", client)
+	case "client":
+		client := client.NewClient(Args.Client.ServerAddr)
+		defer client.Close()
+	}
 }
