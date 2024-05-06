@@ -1,11 +1,12 @@
 package server
 
 import (
-	"fmt"
+	"encoding/binary"
 	"log/slog"
 	"net"
 	"os"
 
+	"github.com/Piggey/bsr/packet"
 	"github.com/Piggey/bsr/util"
 )
 
@@ -50,17 +51,23 @@ func (s *Server) Listen() error {
 
 	for {
 		// wait for client to create a new game
-		_, addr, err := s.udpConn.ReadFrom(buf)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("received packet from addr: %v\n", addr)
+		s.awaitCreateNewGame()
 
 		// create new go routine for a game
 	}
 }
 
-func (s *Server) StartNewGame() {
+func (s *Server) awaitCreateNewGame() error {
+	ngp := packet.CreateGamePacket{}
+	err := binary.Read(s.udpConn, binary.BigEndian, &ngp)
+	if err != nil {
+		return err
+	}
+
+	s.logger.Info("received create new game packet", slog.Any("packet", ngp))
+	return nil
+}
+
+func (s *Server) startNewGame() {
 	panic("to be implemented")
 }
