@@ -2,10 +2,12 @@ package server
 
 import (
 	"encoding/binary"
+	"fmt"
 	"log/slog"
 	"net"
 	"os"
 
+	"github.com/Piggey/bsr/game"
 	"github.com/Piggey/bsr/packet"
 	"github.com/Piggey/bsr/util"
 )
@@ -51,23 +53,36 @@ func (s *Server) Listen() error {
 
 	for {
 		// wait for client to create a new game
-		s.awaitCreateNewGame()
+		ngp, err := s.awaitCreateNewGame()
+		if err != nil {
+			return err
+		}
 
-		// create new go routine for a game
+		go s.startNewGame(ngp)
 	}
 }
 
-func (s *Server) awaitCreateNewGame() error {
+func (s *Server) awaitCreateNewGame() (packet.CreateGamePacket, error) {
 	ngp := packet.CreateGamePacket{}
 	err := binary.Read(s.udpConn, binary.BigEndian, &ngp)
 	if err != nil {
-		return err
+		return ngp, err
+	}
+
+	if err := ngp.Validate(); err != nil {
+		s.logger.Error("invalid packet received", slog.Any("err", err))
+		return ngp, err
 	}
 
 	s.logger.Info("received create new game packet", slog.Any("packet", ngp))
-	return nil
+	return ngp, err
 }
 
-func (s *Server) startNewGame() {
-	panic("to be implemented")
+func (s *Server) startNewGame(ngp packet.CreateGamePacket) error {
+	s.logger.Info("starting new game")
+
+	g := game.NewGame()
+
+	fmt.Printf("g: %v\n", g)
+	return nil
 }
