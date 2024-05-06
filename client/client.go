@@ -46,7 +46,7 @@ func (c *Client) Close() error {
 	return c.udpConn.Close()
 }
 
-func (c *Client) CreateNewGame(mode packet.GameMode) error {
+func (c *Client) StartNewGame(mode packet.GameMode) error {
 	ngp := packet.NewCreateGamePacket(mode)
 
 	return binary.Write(c.udpConn, binary.BigEndian, ngp)
