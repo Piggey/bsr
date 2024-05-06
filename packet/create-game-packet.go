@@ -1,5 +1,7 @@
 package packet
 
+import "fmt"
+
 type GameMode byte
 
 const (
@@ -8,15 +10,31 @@ const (
 )
 
 type CreateGamePacket struct {
-	Magic   [3]byte  // "bsr"
-	Version byte     // protocol version
+	magic   [3]byte  // "bsr"
+	version byte     // protocol version
 	Mode    GameMode // pvp, pve
 }
 
 func NewCreateGamePacket(mode GameMode) CreateGamePacket {
 	return CreateGamePacket{
-		Magic:   MagicBytes,
-		Version: CurrentVersion,
+		magic:   MagicBytes,
+		version: CurrentVersion,
 		Mode:    mode,
 	}
+}
+
+func (p *CreateGamePacket) Validate() error {
+	if p.magic != MagicBytes {
+		return fmt.Errorf("invalid magic bytes")
+	}
+
+	if p.version != CurrentVersion {
+		return fmt.Errorf("invalid version")
+	}
+
+	if p.Mode > 2 {
+		return fmt.Errorf("invalid game mode")
+	}
+
+	return nil
 }
