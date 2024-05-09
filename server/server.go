@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/binary"
 	"fmt"
 	"log/slog"
 	"net"
@@ -9,13 +8,16 @@ import (
 
 	"github.com/Piggey/bsr/game"
 	"github.com/Piggey/bsr/packet"
+	"github.com/Piggey/bsr/packet/binary"
 	"github.com/Piggey/bsr/util"
+	"github.com/google/uuid"
 )
 
 type Server struct {
-	addr    net.Addr
-	udpConn *net.UDPConn
-	logger  *slog.Logger
+	addr        net.Addr
+	udpConn     *net.UDPConn
+	logger      *slog.Logger
+	activeGames map[uuid.UUID]activeGame
 }
 
 func NewServer(addr string) *Server {
@@ -38,13 +40,15 @@ func NewServer(addr string) *Server {
 	logger.Info("server created")
 
 	return &Server{
-		addr:    udpAddr,
-		udpConn: udpConn,
-		logger:  logger,
+		addr:        udpAddr,
+		udpConn:     udpConn,
+		logger:      logger,
+		activeGames: map[uuid.UUID]activeGame{},
 	}
 }
 
 func (s *Server) Close() error {
+	s.logger.Info("connection closed")
 	return s.udpConn.Close()
 }
 
@@ -53,36 +57,67 @@ func (s *Server) Listen() error {
 
 	for {
 		// wait for client to create a new game
-		ngp, err := s.awaitCreateNewGame()
+		ngp, hostAddr, err := s.awaitCreateNewGame()
 		if err != nil {
-			return err
+			return fmt.Errorf("awaitCreateNewGame: %v", err)
 		}
 
-		go s.startNewGame(ngp)
+		go s.startNewGame(hostAddr, ngp)
 	}
 }
 
-func (s *Server) awaitCreateNewGame() (packet.CreateGamePacket, error) {
-	ngp := packet.CreateGamePacket{}
-	err := binary.Read(s.udpConn, binary.BigEndian, &ngp)
+func (s *Server) awaitCreateNewGame() (packet.CreateGamePacket, net.Addr, error) {
+	ngp, addr, err := readPacket[packet.CreateGamePacket](s.udpConn)
 	if err != nil {
-		return ngp, err
+		return ngp, addr, fmt.Errorf("readAndValidate: %v", err)
 	}
 
-	if err := ngp.Validate(); err != nil {
-		s.logger.Error("invalid packet received", slog.Any("err", err))
-		return ngp, err
-	}
-
-	s.logger.Info("received create new game packet", slog.Any("packet", ngp))
-	return ngp, err
+	return ngp, addr, nil
 }
 
-func (s *Server) startNewGame(ngp packet.CreateGamePacket) error {
-	s.logger.Info("starting new game")
-
+func (s *Server) startNewGame(hostAddr net.Addr, ngp packet.CreateGamePacket) error {
 	g := game.NewGame()
+	s.logger.Info("started new game", slog.Any("game id", g.Id))
 
-	fmt.Printf("g: %v\n", g)
+	ag := activeGame{
+		game:        g,
+		gamemode:    ngp.Mode,
+		player1Addr: hostAddr,
+		player2Addr: nil,
+	}
+
+	s.activeGames[g.Id] = ag
+
+	// send game state packet to all players
+	gsp := packet.GameStatePacket{
+		Round:         g.Round,
+		Player1Health: g.Player1.Health(),
+		Player1Items:  g.Player1.Items(),
+		Player2Health: g.Player1.Health(),
+		Player2Items:  g.Player2.Items(),
+		ShotgunLive:   g.Shotgun.LiveShells(),
+		ShotgunBlank:  g.Shotgun.BlankShells(),
+		PlayerTurn:    0,
+	}
+	
+	err := binary.Write(s.udpConn, binary.BigEndian, gsp)
+	if err != nil {
+		return fmt.Errorf("udp write: %v", err)
+	}
+
 	return nil
+}
+
+func readPacket[T packet.Packet](conn *net.UDPConn) (T, net.Addr, error) {
+	var p T
+	addr, err := binary.ReadFrom(conn, binary.BigEndian, &p)
+	if err != nil {
+		return p, nil, fmt.Errorf("udp read: %v", err)
+	}
+
+	if err := p.Validate(); err != nil {
+		return p, addr, fmt.Errorf("packet validate: %v", err)
+	}
+
+	return p, addr, nil
 }
