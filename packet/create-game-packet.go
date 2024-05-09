@@ -2,7 +2,7 @@ package packet
 
 import "fmt"
 
-type GameMode byte
+type GameMode uint8
 
 const (
 	GameModePvP GameMode = 1
@@ -23,7 +23,7 @@ func NewCreateGamePacket(mode GameMode) CreateGamePacket {
 	}
 }
 
-func (p *CreateGamePacket) Validate() error {
+func (p CreateGamePacket) Validate() error {
 	if p.magic != MagicBytes {
 		return fmt.Errorf("invalid magic bytes")
 	}
