@@ -1,13 +1,28 @@
 package game
 
 type player struct {
-	lives uint8
-	items []GameItem
+	Id     uint8
+	health uint8
+	items  [8]GameItem
 }
 
-func newPlayer() player {
+func newPlayer(id uint8) player {
 	return player{
-		lives: 2,
-		items: []GameItem{},
+		Id:     id,
+		health: 2,
+		items:  [8]GameItem{},
 	}
+}
+
+func (p *player) Health() uint8 {
+	return p.health
+}
+
+func (p *player) Items() [8]uint8 {
+	out := [8]uint8{}
+	for i := 0; i < len(p.items); i++ {
+		out[i] = uint8(p.items[i])
+	}
+
+	return out
 }

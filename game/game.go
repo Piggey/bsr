@@ -4,18 +4,18 @@ import "github.com/google/uuid"
 
 type Game struct {
 	Id      uuid.UUID
-	round   uint8
-	shotgun shotgun
-	player1 player
-	player2 player
+	Round   uint8
+	Shotgun shotgun
+	Player1 player
+	Player2 player
 }
 
 func NewGame() *Game {
 	return &Game{
 		Id:      uuid.New(),
-		round:   0,
-		shotgun: newShotgun(),
-		player1: newPlayer(),
-		player2: newPlayer(),
+		Round:   0,
+		Shotgun: newShotgun(),
+		Player1: newPlayer(0),
+		Player2: newPlayer(1),
 	}
 }
