@@ -10,6 +10,15 @@ import (
 func main() {
 	ctx := kong.Parse(&Args)
 
+	// open server
+	// connect client
+	// client -> server: start new game
+	// server starts up game
+	// server -> client: game state for new game
+	// client -> server: move
+	// server validates move
+	// server -> client: game state
+
 	switch ctx.Command() {
 	case "server":
 		srv := server.NewServer(Args.Server.Addr)
