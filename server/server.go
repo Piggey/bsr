@@ -97,9 +97,9 @@ func (s *Server) startNewGame(hostAddr net.Addr, ngp packet.CreateGamePacket) er
 		Player2Items:  g.Player2.Items(),
 		ShotgunLive:   g.Shotgun.LiveShells(),
 		ShotgunBlank:  g.Shotgun.BlankShells(),
-		PlayerTurn:    0,
+		PlayerTurn:    g.CurrentTurnPlayerId,
 	}
-	
+
 	err := binary.Write(s.udpConn, binary.BigEndian, gsp)
 	if err != nil {
 		return fmt.Errorf("udp write: %v", err)

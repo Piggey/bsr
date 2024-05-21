@@ -5,6 +5,7 @@ import "math/rand"
 type shotgun struct {
 	shellsLeft uint8
 	chamber    uint8 // 1 for live, 0 for blank
+	dmg        uint8
 }
 
 func newShotgun() shotgun {
@@ -14,7 +15,18 @@ func newShotgun() shotgun {
 	return shotgun{
 		shellsLeft: shells,
 		chamber:    chamber,
+		dmg:        1,
 	}
+}
+
+// returns dmg dealt, 0 when blank, 1 when normal, 2 when handsaw used
+func (s *shotgun) Shoot() uint8 {
+	shell := s.chamber & 1
+
+	s.chamber >>= 1
+	s.shellsLeft -= 1
+
+	return shell * s.dmg
 }
 
 func (s *shotgun) LiveShells() uint8 {
