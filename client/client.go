@@ -1,12 +1,12 @@
 package client
 
 import (
-	"encoding/binary"
 	"log/slog"
 	"net"
 	"os"
 
 	"github.com/Piggey/bsr/packet"
+	"github.com/Piggey/bsr/packet/binary"
 	"github.com/Piggey/bsr/util"
 )
 
@@ -43,6 +43,7 @@ func NewClient(serverAddr string) *Client {
 }
 
 func (c *Client) Close() error {
+	c.logger.Info("connection closed")
 	return c.udpConn.Close()
 }
 
