@@ -27,7 +27,7 @@ func NewClient(serverAddr string) *Client {
 		panic(err)
 	}
 
-	clientHandler := util.NewCustomHandler("client", udpConn.LocalAddr().String(), os.Stdout, &slog.HandlerOptions{
+	clientHandler := util.NewSlogHandler("client", udpConn.LocalAddr().String(), os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})

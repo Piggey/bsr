@@ -11,15 +11,15 @@ import (
 	"github.com/fatih/color"
 )
 
-type CustomHandler struct {
+type SlogHandler struct {
 	slog.Handler
 	l        *log.Logger
 	name     string
 	addrport string
 }
 
-func NewCustomHandler(name string, addrport string, out io.Writer, slogOpts *slog.HandlerOptions) *CustomHandler {
-	h := &CustomHandler{
+func NewSlogHandler(name string, addrport string, out io.Writer, slogOpts *slog.HandlerOptions) *SlogHandler {
+	h := &SlogHandler{
 		Handler:  slog.NewTextHandler(out, slogOpts),
 		l:        log.New(out, "", 0),
 		name:     name,
@@ -29,7 +29,7 @@ func NewCustomHandler(name string, addrport string, out io.Writer, slogOpts *slo
 	return h
 }
 
-func (h *CustomHandler) Handle(ctx context.Context, r slog.Record) error {
+func (sh *SlogHandler) Handle(ctx context.Context, r slog.Record) error {
 	level := r.Level.String() + ":"
 
 	switch r.Level {
@@ -52,6 +52,6 @@ func (h *CustomHandler) Handle(ctx context.Context, r slog.Record) error {
 	timeStr := r.Time.Format("[" + time.RFC3339 + "]")
 	msg := color.CyanString(r.Message)
 
-	h.l.Println(timeStr, h.name, h.addrport, level, msg, color.WhiteString(fields))
+	sh.l.Println(timeStr, sh.name, sh.addrport, level, msg, color.WhiteString(fields))
 	return nil
 }

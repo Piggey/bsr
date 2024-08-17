@@ -31,7 +31,7 @@ func NewServer(addr string) *Server {
 		panic(err)
 	}
 
-	serverHandler := util.NewCustomHandler("server", udpAddr.String(), os.Stdout, &slog.HandlerOptions{
+	serverHandler := util.NewSlogHandler("server", udpAddr.String(), os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})
