@@ -122,5 +122,6 @@ func (s *Server) startNewGame(hostAddr net.Addr, ngp packet.CreateGamePacket) er
 		return fmt.Errorf("s.WriteTo: %w", err)
 	}
 
+	packet.WritePacket(a, gsp)
 	return nil
 }

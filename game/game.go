@@ -3,12 +3,9 @@ package game
 import (
 	"fmt"
 	"slices"
-
-	"github.com/google/uuid"
 )
 
 type Game struct {
-	Id                  uuid.UUID
 	Round               uint8
 	Shotgun             shotgun
 	Player1             player
@@ -19,7 +16,6 @@ type Game struct {
 
 func NewGame() *Game {
 	return &Game{
-		Id:                  uuid.New(),
 		Round:               0,
 		Shotgun:             newShotgun(),
 		Player1:             newPlayer(0),

@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/Piggey/bsr/packet"
-	"github.com/Piggey/bsr/packet/binary"
 	"github.com/Piggey/bsr/util"
 )
 
@@ -45,8 +44,8 @@ func (c *Client) Close() error {
 	return c.srvConn.Close()
 }
 
-func (c *Client) StartNewGame(mode packet.GameMode) error {
-	ngp := packet.NewCreateGamePacket(mode)
+func (c *Client) StartNewGame(gameId uint8, mode packet.GameMode) error {
+	ngp := packet.NewJoinGamePacket(gameId, mode)
 
 	return binary.Write(c.srvConn, binary.BigEndian, ngp)
 }
