@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Piggey/bsr/client"
@@ -12,12 +11,12 @@ import (
 
 var args struct {
 	Client struct {
-		ServerAddr string  `help:"server address"`
+		ServerAddr string  `help:"server address" required:""`
 		Addr       *string `help:"optional client address, defaults to first available port"`
-		Mode       string  `help:"against other player (pvp) or against ai (pve)" default:"pve"`
-		// Pvp        struct {
-		// 	OpponentAddr string `help:"opponents address"`
-		// } `default:"1" help:"play against other client"`
+		Pvp        struct {
+			GameId uint8 `help:"game id to connect players to the same game" required:""`
+		} `cmd:""`
+		Pve struct{} `cmd:""`
 	} `cmd:"" help:"run as client"`
 	Server struct {
 		Addr string `help:"server address" default:":5000"`
@@ -26,8 +25,6 @@ var args struct {
 
 func main() {
 	ctx := kong.Parse(&args)
-
-	fmt.Printf("args: %v\n", args)
 
 	// open server
 	// connect client
@@ -62,5 +59,8 @@ func main() {
 		if err != nil {
 			log.Fatalf("client.StartNewGame: %v", err)
 		}
+
+	case "client pvp":
+		panic("unimplemented")
 	}
 }
