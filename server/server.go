@@ -9,13 +9,12 @@ import (
 	"github.com/Piggey/bsr/game"
 	"github.com/Piggey/bsr/packet"
 	"github.com/Piggey/bsr/util"
-	"github.com/google/uuid"
 )
 
 type Server struct {
 	conn        net.PacketConn
 	logger      *slog.Logger
-	activeGames map[uuid.UUID]activeGame
+	activeGames map[uint8]activeGame
 }
 
 func NewServer(addr string) (*Server, error) {
@@ -35,7 +34,7 @@ func NewServer(addr string) (*Server, error) {
 	return &Server{
 		conn:        conn,
 		logger:      logger,
-		activeGames: map[uuid.UUID]activeGame{},
+		activeGames: map[uint8]activeGame{},
 	}, nil
 }
 
