@@ -61,8 +61,8 @@ func Test_shotgun_Shoot(t *testing.T) {
 			name: "normal, live",
 			fields: fields{
 				shellsLeft: 1,
-				chamber: 0b00000101,
-				dmg: 1,
+				chamber:    0b00000101,
+				dmg:        1,
 			},
 			want: 1,
 		},
@@ -70,8 +70,8 @@ func Test_shotgun_Shoot(t *testing.T) {
 			name: "2x dmg, live",
 			fields: fields{
 				shellsLeft: 1,
-				chamber: 0b00000101,
-				dmg: 2,
+				chamber:    0b00000101,
+				dmg:        2,
 			},
 			want: 2,
 		},
@@ -79,8 +79,8 @@ func Test_shotgun_Shoot(t *testing.T) {
 			name: "normal, blank",
 			fields: fields{
 				shellsLeft: 1,
-				chamber: 0,
-				dmg: 1,
+				chamber:    0,
+				dmg:        1,
 			},
 			want: 0,
 		},
@@ -88,8 +88,8 @@ func Test_shotgun_Shoot(t *testing.T) {
 			name: "2x dmg, blank",
 			fields: fields{
 				shellsLeft: 1,
-				chamber: 0,
-				dmg: 2,
+				chamber:    0,
+				dmg:        2,
 			},
 			want: 0,
 		},
