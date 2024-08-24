@@ -8,30 +8,23 @@ import (
 
 	"github.com/Piggey/bsr/game"
 	"github.com/Piggey/bsr/packet"
-	"github.com/Piggey/bsr/packet/binary"
 	"github.com/Piggey/bsr/util"
 	"github.com/google/uuid"
 )
 
 type Server struct {
-	addr        net.Addr
-	udpConn     *net.UDPConn
+	conn        net.PacketConn
 	logger      *slog.Logger
 	activeGames map[uuid.UUID]activeGame
 }
 
-func NewServer(addr string) *Server {
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+func NewServer(addr string) (*Server, error) {
+	conn, err := net.ListenPacket("udp", addr)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("net.ListenPacket: %w", err)
 	}
 
-	udpConn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		panic(err)
-	}
-
-	serverHandler := util.NewSlogHandler("server", udpAddr.String(), os.Stdout, &slog.HandlerOptions{
+	serverHandler := util.NewSlogHandler("server", conn.LocalAddr().String(), os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})
@@ -40,16 +33,15 @@ func NewServer(addr string) *Server {
 	logger.Info("server created")
 
 	return &Server{
-		addr:        udpAddr,
-		udpConn:     udpConn,
+		conn:        conn,
 		logger:      logger,
 		activeGames: map[uuid.UUID]activeGame{},
-	}
+	}, nil
 }
 
 func (s *Server) Close() error {
 	s.logger.Info("connection closed")
-	return s.udpConn.Close()
+	return s.conn.Close()
 }
 
 func (s *Server) Listen() error {
@@ -57,22 +49,48 @@ func (s *Server) Listen() error {
 
 	for {
 		// wait for client to create a new game
-		ngp, hostAddr, err := s.awaitCreateNewGame()
+		ngp := packet.CreateGamePacket{}
+		clientAddr, err := s.ReadFrom(&ngp)
 		if err != nil {
-			return fmt.Errorf("awaitCreateNewGame: %v", err)
+			return fmt.Errorf("s.ReadFrom: %w", err)
 		}
 
-		go s.startNewGame(hostAddr, ngp)
+		go s.startNewGame(clientAddr, ngp)
 	}
 }
 
-func (s *Server) awaitCreateNewGame() (packet.CreateGamePacket, net.Addr, error) {
-	ngp, addr, err := readPacket[packet.CreateGamePacket](s.udpConn)
+func (s *Server) WriteTo(p packet.Packet, addr net.Addr) error {
+	payload, err := p.ToBytes()
 	if err != nil {
-		return ngp, addr, fmt.Errorf("readAndValidate: %v", err)
+		return fmt.Errorf("p.ToBytes: %w", err)
 	}
 
-	return ngp, addr, nil
+	s.logger.Debug("sending packet", slog.Int("packet length", len(payload)), slog.String("receiver addr", addr.String()))
+
+	_, err = s.conn.WriteTo(payload, addr)
+	if err != nil {
+		return fmt.Errorf("conn.WriteTo: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) ReadFrom(p packet.Packet) (net.Addr, error) {
+	buf := make([]byte, 1024)
+
+	n, addr, err := s.conn.ReadFrom(buf)
+	if err != nil {
+		return nil, fmt.Errorf("conn.ReadFrom: %w", err)
+	}
+	buf = buf[:n]
+	s.logger.Debug("read packet", slog.Int("packet length", n), slog.String("sender addr", addr.String()))
+
+	err = p.FromBytes(buf)
+	if err != nil {
+		return nil, fmt.Errorf("p.FromBytes: %w", err)
+	}
+
+	return addr, nil
 }
 
 func (s *Server) startNewGame(hostAddr net.Addr, ngp packet.CreateGamePacket) error {
@@ -100,24 +118,10 @@ func (s *Server) startNewGame(hostAddr net.Addr, ngp packet.CreateGamePacket) er
 		PlayerTurn:    g.CurrentTurnPlayerId,
 	}
 
-	err := binary.Write(s.udpConn, binary.BigEndian, gsp)
+	err := s.WriteTo(&gsp, hostAddr)
 	if err != nil {
-		return fmt.Errorf("udp write: %v", err)
+		return fmt.Errorf("s.WriteTo: %w", err)
 	}
 
 	return nil
-}
-
-func readPacket[T packet.Packet](conn *net.UDPConn) (T, net.Addr, error) {
-	var p T
-	addr, err := binary.ReadFrom(conn, binary.BigEndian, &p)
-	if err != nil {
-		return p, nil, fmt.Errorf("udp read: %v", err)
-	}
-
-	if err := p.Validate(); err != nil {
-		return p, addr, fmt.Errorf("packet validate: %v", err)
-	}
-
-	return p, addr, nil
 }
