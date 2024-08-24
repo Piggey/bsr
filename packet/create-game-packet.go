@@ -1,6 +1,9 @@
 package packet
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type GameMode uint8
 
@@ -23,7 +26,7 @@ func NewCreateGamePacket(mode GameMode) CreateGamePacket {
 	}
 }
 
-func (p CreateGamePacket) Validate() error {
+func (p *CreateGamePacket) Validate() error {
 	if p.magic != MagicBytes {
 		return fmt.Errorf("invalid magic bytes")
 	}
@@ -37,4 +40,12 @@ func (p CreateGamePacket) Validate() error {
 	}
 
 	return nil
+}
+
+func (p *CreateGamePacket) ToBytes() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+func (p *CreateGamePacket) FromBytes(b []byte) error {
+	return json.Unmarshal(b, p)
 }

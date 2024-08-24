@@ -1,5 +1,7 @@
 package packet
 
+import "encoding/json"
+
 type GameStatePacket struct {
 	magic         [3]uint8 // "bsr"
 	version       uint8
@@ -11,4 +13,17 @@ type GameStatePacket struct {
 	ShotgunLive   uint8
 	ShotgunBlank  uint8
 	PlayerTurn    uint8
+}
+
+func (p *GameStatePacket) FromBytes(b []byte) error {
+	return json.Unmarshal(b, p)
+}
+
+func (p *GameStatePacket) ToBytes() ([]byte, error) {
+	return json.Marshal(p)
+}
+
+func (p *GameStatePacket) Validate() error {
+	// TODO: implementacja
+	panic("unimplemented")
 }
