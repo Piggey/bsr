@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/Piggey/bsr/client"
 	"github.com/Piggey/bsr/packet"
@@ -39,12 +40,15 @@ func main() {
 
 	switch ctx.Command() {
 	case "server":
-		srv := server.NewServer(args.Server.Addr)
+		srv, err := server.NewServer(args.Server.Addr)
+		if err != nil {
+			log.Fatalf("server.NewServer: %v", err)
+		}
 		defer srv.Close()
 
-		err := srv.Listen()
+		err = srv.Listen()
 		if err != nil {
-			panic(err)
+			log.Fatalf("srv.Listen: %v", err)
 		}
 
 	case "client":
