@@ -52,12 +52,15 @@ func main() {
 		}
 
 	case "client":
-		client := client.NewClient(args.Client.ServerAddr)
+		client, err := client.NewClient(args.Client.ServerAddr)
+		if err != nil {
+			log.Fatalf("client.NewClient: %v", err)
+		}
 		defer client.Close()
 
-		err := client.StartNewGame(packet.GameModePvE) // for now
+		err = client.StartNewGame(packet.GameModePvE) // for now
 		if err != nil {
-			panic(err)
+			log.Fatalf("client.StartNewGame: %v", err)
 		}
 	}
 }
