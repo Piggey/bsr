@@ -48,14 +48,14 @@ func main() {
 			log.Fatalf("srv.Listen: %v", err)
 		}
 
-	case "client":
+	case "client pve":
 		client, err := client.NewClient(args.Client.ServerAddr)
 		if err != nil {
 			log.Fatalf("client.NewClient: %v", err)
 		}
 		defer client.Close()
 
-		err = client.StartNewGame(packet.GameModePvE) // for now
+		err = client.StartNewGame(0, packet.GameModePvE) // for now
 		if err != nil {
 			log.Fatalf("client.StartNewGame: %v", err)
 		}

@@ -44,12 +44,6 @@ func (c *Client) Close() error {
 	return c.srvConn.Close()
 }
 
-func (c *Client) StartNewGame(gameId uint8, mode packet.GameMode) error {
-	ngp := packet.NewJoinGamePacket(gameId, mode)
-
-	return binary.Write(c.srvConn, binary.BigEndian, ngp)
-}
-
 func (c *Client) Read(p packet.Packet) error {
 	buf := make([]byte, 1024)
 	n, err := c.srvConn.Read(buf)
