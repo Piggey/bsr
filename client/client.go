@@ -44,6 +44,10 @@ func (c *Client) Close() error {
 	return c.srvConn.Close()
 }
 
+func (c *Client) StartNewGame(gameId uint32, gamemode packet.GameMode) error {
+	return nil
+}
+
 func (c *Client) Read(p packet.Packet) error {
 	buf := make([]byte, 1024)
 	n, err := c.srvConn.Read(buf)

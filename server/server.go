@@ -14,7 +14,7 @@ import (
 type Server struct {
 	conn        net.PacketConn
 	logger      *slog.Logger
-	activeGames map[uint8]activeGame
+	activeGames map[uint32]activeGame
 }
 
 func NewServer(addr string) (*Server, error) {
@@ -34,7 +34,7 @@ func NewServer(addr string) (*Server, error) {
 	return &Server{
 		conn:        conn,
 		logger:      logger,
-		activeGames: map[uint8]activeGame{},
+		activeGames: map[uint32]activeGame{},
 	}, nil
 }
 
@@ -54,7 +54,7 @@ func (s *Server) Listen() error {
 			return fmt.Errorf("s.ReadFrom: %w", err)
 		}
 
-		go s.startNewGame(clientAddr, ngp)
+		go s.startNewGame(clientAddr, &ngp)
 	}
 }
 
@@ -92,7 +92,7 @@ func (s *Server) ReadFrom(p packet.Packet) (net.Addr, error) {
 	return addr, nil
 }
 
-func (s *Server) startNewGame(hostAddr net.Addr, ngp packet.CreateGamePacket) error {
+func (s *Server) startNewGame(hostAddr net.Addr, ngp *packet.CreateGamePacket) error {
 	g := game.NewGame()
 	s.logger.Info("started new game", slog.Any("game id", g.Id))
 
@@ -122,6 +122,5 @@ func (s *Server) startNewGame(hostAddr net.Addr, ngp packet.CreateGamePacket) er
 		return fmt.Errorf("s.WriteTo: %w", err)
 	}
 
-	packet.WritePacket(a, gsp)
 	return nil
 }

@@ -55,7 +55,7 @@ func main() {
 		}
 		defer client.Close()
 
-		err = client.StartNewGame(0, packet.GameModePvE) // for now
+		err = client.StartNewGame(0, packet.GameMode_PVE) // for now
 		if err != nil {
 			log.Fatalf("client.StartNewGame: %v", err)
 		}
