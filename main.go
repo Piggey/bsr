@@ -3,7 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/Piggey/bsr/packet"
+	"github.com/Piggey/bsr/client"
+	"github.com/Piggey/bsr/server"
 	"github.com/alecthomas/kong"
 )
 
@@ -47,13 +48,13 @@ func main() {
 		}
 
 	case "client pve":
-		client, err := client.NewClient(args.Client.ServerAddr)
+		c, err := client.NewClient("player1", args.Client.ServerAddr)
 		if err != nil {
 			log.Fatalf("client.NewClient: %v", err)
 		}
-		defer client.Close()
+		defer c.Close()
 
-		err = client.StartNewGame(0, packet.GameMode_PVE) // for now
+		err = c.StartNewGame()
 		if err != nil {
 			log.Fatalf("client.StartNewGame: %v", err)
 		}
