@@ -1,0 +1,39 @@
+syntax = "proto3";
+package bsr;
+
+option go_package = "github.com/Piggey/bsr";
+
+service Bsr {
+  rpc CreateGame (CreateGameRequest) returns (CreateGameResponse);
+  rpc JoinGame (JoinGameRequest) returns (JoinGameResponse);
+}
+
+enum GameMode {
+  UNSPECIFIED = 0;
+  PVP = 1;
+  PVE = 2;
+}
+
+message CreateGameRequest {
+  uint32 version = 1;
+  string player_name = 2;
+  GameMode mode = 3;
+}
+
+message CreateGameResponse {
+  uint32 version = 1;
+  string game_uuid = 2;
+  string player_uuid = 3;
+}
+
+message JoinGameRequest {
+  uint32 version = 1;
+  string game_uuid = 2;
+  string player_name = 3;
+}
+
+message JoinGameResponse {
+  uint32 version = 1;
+  string game_uuid = 2;
+  string player_uuid = 3;
+}

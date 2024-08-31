@@ -3,9 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/Piggey/bsr/client"
 	"github.com/Piggey/bsr/packet"
-	"github.com/Piggey/bsr/server"
 	"github.com/alecthomas/kong"
 )
 
