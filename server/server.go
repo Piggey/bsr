@@ -14,6 +14,7 @@ import (
 
 type Server struct {
 	pb.UnimplementedBsrServer
+
 	lis    net.Listener
 	srv    *grpc.Server
 	games  sync.Map
