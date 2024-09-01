@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/Piggey/bsr/client"
+	bsr "github.com/Piggey/bsr/proto"
 	"github.com/Piggey/bsr/server"
 	"github.com/alecthomas/kong"
 )
@@ -25,15 +26,6 @@ var args struct {
 func main() {
 	ctx := kong.Parse(&args)
 
-	// open server
-	// connect client
-	// client -> server: start new game
-	// server starts up game
-	// server -> client: game state for new game
-	// client -> server: move
-	// server validates move
-	// server -> client: game state
-
 	switch ctx.Command() {
 	case "server":
 		srv, err := server.NewServer(args.Server.Addr)
@@ -54,7 +46,7 @@ func main() {
 		}
 		defer c.Close()
 
-		err = c.StartNewGame()
+		err = c.NewGame(bsr.GameMode_PVE)
 		if err != nil {
 			log.Fatalf("client.StartNewGame: %v", err)
 		}

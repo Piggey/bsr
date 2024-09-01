@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -43,6 +44,19 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Client) StartNewGame() error {
-	panic("unimplemented")
+func (c *Client) NewGame(mode pb.GameMode) error {
+	ctx := context.Background()
+	c.logger.Info("starting new game", slog.String("mode", mode.String()))
+
+	cg, err := c.bsrc.CreateGame(ctx, &pb.CreateGameRequest{
+		Version:    pb.BsrProtoV1,
+		PlayerName: c.name,
+		Mode:       mode,
+	})
+	if err != nil {
+		return fmt.Errorf("bsrc.CreateGame: %w", err)
+	}
+
+	_ = cg
+	return nil
 }

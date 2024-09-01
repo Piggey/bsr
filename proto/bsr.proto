@@ -4,7 +4,6 @@ package bsr;
 option go_package = "github.com/Piggey/bsr";
 
 service Bsr {
-  rpc CreateGame (CreateGameRequest) returns (CreateGameResponse);
   rpc JoinGame (JoinGameRequest) returns (JoinGameResponse);
 }
 
