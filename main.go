@@ -41,15 +41,15 @@ func main() {
 		}
 
 	case "client pve":
-		c, err := client.NewClient("player1", args.Client.ServerAddr)
+		c, err := client.NewClient(network, args.Client.ServerAddr)
 		if err != nil {
 			log.Fatalf("client.NewClient: %v", err)
 		}
 		defer c.Close()
 
-		err = c.NewGame(bsr.GameMode_PVE)
+		err = c.Handshake()
 		if err != nil {
-			log.Fatalf("client.StartNewGame: %v", err)
+			log.Fatalf("c.Handshake: %v", err)
 		}
 
 	case "client pvp":
