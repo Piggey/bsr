@@ -1,108 +1,91 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net"
 	"os"
-	"sync"
 
-	"github.com/Piggey/bsr/game"
-	pb "github.com/Piggey/bsr/proto"
+	"github.com/Piggey/bsr/packet"
 	"github.com/Piggey/bsr/util"
-	"github.com/google/uuid"
-	"google.golang.org/grpc"
 )
 
 type Server struct {
-	pb.UnimplementedBsrServer
-
-	lis    net.Listener
-	srv    *grpc.Server
-	games  sync.Map
+	conn   net.PacketConn
 	logger *slog.Logger
 }
 
-func NewServer(addr string) (*Server, error) {
-	lis, err := net.Listen("tcp", addr)
+func NewServer(network, addr string) (*Server, error) {
+	conn, err := net.ListenPacket(network, addr)
 	if err != nil {
-		return nil, fmt.Errorf("net.Listen: %w", err)
+		return nil, fmt.Errorf("net.ListenPacket: %w", err)
 	}
 
-	serverHandler := util.NewSlogHandler("server", lis.Addr().String(), os.Stdout, &slog.HandlerOptions{
+	serverHandler := util.NewSlogHandler("server", conn.LocalAddr().String(), os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelDebug,
 	})
 	logger := slog.New(serverHandler)
+	logger.Info("server created")
 
-	logger.Info("new server created")
-
-	srv := grpc.NewServer()
-	s := Server{
-		lis:    lis,
-		srv:    srv,
-		games:  sync.Map{},
+	return &Server{
+		conn:   conn,
 		logger: logger,
-	}
-	pb.RegisterBsrServer(srv, &s)
-
-	return &s, nil
+	}, nil
 }
 
 func (s *Server) Close() error {
-	s.logger.Info("closing")
-
-	s.srv.GracefulStop()
-	return s.lis.Close()
+	return s.conn.Close()
 }
 
 func (s *Server) Listen() error {
-	s.logger.Info("started listening")
-	return s.srv.Serve(s.lis)
-}
+	for {
+		packetType, addr, err := s.readPacketType()
+		if err != nil {
+			return fmt.Errorf("s.readPacketType: %w", err)
+		}
 
-func (s *Server) CreateGame(ctx context.Context, cg *pb.CreateGameRequest) (*pb.CreateGameResponse, error) {
-	s.logger.Info("creating a new game")
-
-	gameUuid := uuid.NewString()
-	g := game.NewGame()
-	playerUuid := g.AddPlayer(cg.PlayerName)
-
-	s.games.Store(gameUuid, g)
-
-	return &pb.CreateGameResponse{
-		Version:    pb.BsrProtoV1,
-		GameUuid:   gameUuid,
-		PlayerUuid: playerUuid,
-	}, nil
-}
-
-func (s *Server) JoinGame(ctx context.Context, jg *pb.JoinGameRequest) (*pb.JoinGameResponse, error) {
-	g, ok := s.getGame(jg.GameUuid)
-	if !ok {
-		return nil, fmt.Errorf("game %s does not exist", jg.GameUuid)
+		switch packetType {
+		case packet.PacketTypeProtocolHandshakeRequest:
+			err = s.handleProtocolHandshake(addr)
+		}
+		if err != nil {
+			return fmt.Errorf("%s: %w", packetType, err)
+		}
 	}
-	g.Lock()
-	defer g.Unlock()
-
-	playerUuid := g.AddPlayer(jg.PlayerName)
-	s.games.Store(jg.GameUuid, g)
-
-	s.logger.Info("player joined game", slog.String("gameUuid", jg.GameUuid), slog.String("player", jg.PlayerName))
-
-	return &pb.JoinGameResponse{
-		Version:    pb.BsrProtoV1,
-		GameUuid:   jg.GameUuid,
-		PlayerUuid: playerUuid,
-	}, nil
 }
 
-func (s *Server) getGame(gameUuid string) (g *game.Game, ok bool) {
-	gameAny, ok := s.games.Load(gameUuid)
-	if !ok {
-		return nil, false
+func (s *Server) readPacketType() (packet.PacketType, net.Addr, error) {
+	buf := make([]byte, 1)
+	n, addr, err := s.conn.ReadFrom(buf)
+	if err != nil {
+		return 0, nil, fmt.Errorf("conn.ReadFrom: %w", err)
+	}
+	if n != 1 {
+		return 0, nil, fmt.Errorf("read %d bytes instead of 1", n)
 	}
 
-	return gameAny.(*game.Game), true
+	return packet.PacketType(buf[0]), addr, nil
+}
+
+func (s *Server) handleProtocolHandshake(addr net.Addr) error {
+	pphReq, err := packet.ReadPacket[*packet.PacketProtocolHandshakeRequest](s.conn)
+	if err != nil {
+		return fmt.Errorf("packet.ReadPacket[*packet.PacketProtocolHandshake]: %w", err)
+	}
+
+	pphRes := packet.PacketProtocolHandshakeResponse{}
+	switch pphReq.ProtocolVersion {
+	case packet.ProtoV1:
+		pphRes.Status = packet.HandshakeStatusOK
+	default:
+		pphRes.Status = packet.HandshakeStatusProtocolNotSupported
+	}
+
+	err = packet.SendPacket(s.conn, addr, &pphRes)
+	if err != nil {
+		return fmt.Errorf("packet.SendPacket: %w", err)
+	}
+
+	return nil
 }
