@@ -1,41 +1,35 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 
-	pb "github.com/Piggey/bsr/proto"
+	"github.com/Piggey/bsr/packet"
 	"github.com/Piggey/bsr/util"
-	"google.golang.org/grpc"
 )
 
 type Client struct {
-	conn   *grpc.ClientConn
-	bsrc   pb.BsrClient
-	name   string
+	conn net.Conn
 	logger *slog.Logger
 }
 
-func NewClient(name, srvAddr string) (*Client, error) {
-	conn, err := grpc.NewClient(srvAddr)
+func NewClient(network, srvAddr string) (*Client, error) {
+	conn, err := net.Dial(network, srvAddr)
 	if err != nil {
-		return nil, fmt.Errorf("grpc.NewClient: %w", err)
+		return nil, fmt.Errorf("net.Dial: %w", err)
 	}
 
-	bsrc := pb.NewBsrClient(conn)
-
-	clientHandler := util.NewSlogHandler("client", "", os.Stdout, &slog.HandlerOptions{
+	clientHandler := util.NewSlogHandler("client", conn.LocalAddr().String(), os.Stdout, &slog.HandlerOptions{
 		AddSource: true,
-		Level:     slog.LevelDebug,
+		Level: slog.LevelDebug,
 	})
 	logger := slog.New(clientHandler)
+	logger.Info("client created")
 
 	return &Client{
-		conn:   conn,
-		bsrc:   bsrc,
-		name:   name,
+		conn: conn,
 		logger: logger,
 	}, nil
 }
@@ -44,19 +38,60 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Client) NewGame(mode pb.GameMode) error {
-	ctx := context.Background()
-	c.logger.Info("starting new game", slog.String("mode", mode.String()))
-
-	cg, err := c.bsrc.CreateGame(ctx, &pb.CreateGameRequest{
-		Version:    pb.BsrProtoV1,
-		PlayerName: c.name,
-		Mode:       mode,
-	})
-	if err != nil {
-		return fmt.Errorf("bsrc.CreateGame: %w", err)
+func (c *Client) Handshake() error {
+	pphReq := packet.PacketProtocolHandshakeRequest{
+		ProtocolVersion: packet.ProtoV1,
 	}
 
-	_ = cg
+	err := c.writePacket(&pphReq)
+	if err != nil {
+		return fmt.Errorf("c.writePacket: %w", err)
+	}
+
+	// await response
+	pphRes := packet.PacketProtocolHandshakeResponse{}
+	err = c.readPacket(&pphRes)
+	if err != nil {
+		return fmt.Errorf("c.readPacket: %w", err)
+	}
+	if pphRes.Status != packet.HandshakeStatusOK {
+		return fmt.Errorf("pphRes.Status != packet.HandshakeStatusOK")
+	}
+
+	return nil
+}
+
+func (c *Client) writePacket(p packet.Packet) error {
+	data, err := p.ToBytes()
+	if err != nil {
+		return fmt.Errorf("p.ToBytes: %w", err)
+	}
+
+	n, err := c.conn.Write(data)
+	if err != nil {
+		return fmt.Errorf("conn.Write: %w", err)
+	}
+	if len(data) != n {
+		return fmt.Errorf("len(data) != n")
+	}
+
+	return nil
+}
+
+func (c *Client) readPacket(p packet.Packet) error {
+	data := make([]byte, p.Size())
+	n, err := c.conn.Read(data)
+	if err != nil {
+		return fmt.Errorf("conn.Read: %w", err)
+	}
+	if len(data) != n {
+		return fmt.Errorf("len(data) != n")
+	}
+
+	err = p.FromBytes(data)
+	if err != nil {
+		return fmt.Errorf("p.FromBytes: %w", err)
+	}
+
 	return nil
 }
