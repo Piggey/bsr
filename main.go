@@ -4,10 +4,11 @@ import (
 	"log"
 
 	"github.com/Piggey/bsr/client"
-	bsr "github.com/Piggey/bsr/proto"
 	"github.com/Piggey/bsr/server"
 	"github.com/alecthomas/kong"
 )
+
+const network = "udp"
 
 var args struct {
 	Client struct {
@@ -28,7 +29,7 @@ func main() {
 
 	switch ctx.Command() {
 	case "server":
-		srv, err := server.NewServer(args.Server.Addr)
+		srv, err := server.NewServer(network, args.Server.Addr)
 		if err != nil {
 			log.Fatalf("server.NewServer: %v", err)
 		}
