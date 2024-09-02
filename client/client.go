@@ -35,6 +35,7 @@ func NewClient(network, srvAddr string) (*Client, error) {
 }
 
 func (c *Client) Close() error {
+	c.logger.Info("client closing")
 	return c.conn.Close()
 }
 
@@ -66,6 +67,8 @@ func (c *Client) writePacket(p packet.Packet) error {
 	if err != nil {
 		return fmt.Errorf("p.ToBytes: %w", err)
 	}
+
+	c.logger.Debug("writing to server", slog.Any("data", data))
 
 	n, err := c.conn.Write(data)
 	if err != nil {
