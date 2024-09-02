@@ -35,15 +35,20 @@ func NewServer(network, addr string) (*Server, error) {
 }
 
 func (s *Server) Close() error {
+	s.logger.Info("server closing")
 	return s.conn.Close()
 }
 
 func (s *Server) Listen() error {
+	s.logger.Info("started listening")
+
 	for {
 		packetType, addr, err := s.readPacketType()
 		if err != nil {
 			return fmt.Errorf("s.readPacketType: %w", err)
 		}
+
+		s.logger.Info("received packet", slog.String("packet", packetType.String()))
 
 		switch packetType {
 		case packet.PacketTypeProtocolHandshakeRequest:
@@ -54,6 +59,30 @@ func (s *Server) Listen() error {
 		}
 	}
 }
+
+func (s *Server) handleProtocolHandshake(addr net.Addr) error {
+	pphReq := packet.PacketProtocolHandshakeRequest{}
+	_, err := s.readPacket(&pphReq)
+	if err != nil {
+		return fmt.Errorf("s.readPacket: %w", err)
+	}
+
+	pphRes := packet.PacketProtocolHandshakeResponse{}
+	switch pphReq.ProtocolVersion {
+	case packet.ProtoV1:
+		pphRes.Status = packet.HandshakeStatusOK
+	default:
+		pphRes.Status = packet.HandshakeStatusProtocolNotSupported
+	}
+
+	err = s.writePacket(&pphRes, addr)
+	if err != nil {
+		return fmt.Errorf("s.writePacket: %w", err)
+	}
+
+	return nil
+}
+
 
 func (s *Server) readPacketType() (packet.PacketType, net.Addr, error) {
 	buf := make([]byte, 1)
@@ -68,23 +97,36 @@ func (s *Server) readPacketType() (packet.PacketType, net.Addr, error) {
 	return packet.PacketType(buf[0]), addr, nil
 }
 
-func (s *Server) handleProtocolHandshake(addr net.Addr) error {
-	pphReq, err := packet.ReadPacket[*packet.PacketProtocolHandshakeRequest](s.conn)
+func (s *Server) readPacket(p packet.Packet) (net.Addr, error) {
+	data := make([]byte, p.Size())
+	n, addr, err := s.conn.ReadFrom(data)
 	if err != nil {
-		return fmt.Errorf("packet.ReadPacket[*packet.PacketProtocolHandshake]: %w", err)
+		return nil, fmt.Errorf("conn.ReadFrom: %w", err)
+	}
+	if len(data) != n {
+		return nil, fmt.Errorf("len(data) != n")
 	}
 
-	pphRes := packet.PacketProtocolHandshakeResponse{}
-	switch pphReq.ProtocolVersion {
-	case packet.ProtoV1:
-		pphRes.Status = packet.HandshakeStatusOK
-	default:
-		pphRes.Status = packet.HandshakeStatusProtocolNotSupported
+	err = p.FromBytes(data)
+	if err != nil {
+		return nil, fmt.Errorf("p.FromBytes: %w", err)
 	}
 
-	err = packet.SendPacket(s.conn, addr, &pphRes)
+	return addr, nil
+}
+
+func (s *Server) writePacket(p packet.Packet, addr net.Addr) error {
+	data, err := p.ToBytes()
 	if err != nil {
-		return fmt.Errorf("packet.SendPacket: %w", err)
+		return fmt.Errorf("p.ToBytes: %w", err)
+	}
+
+	n, err := s.conn.WriteTo(data, addr)
+	if err != nil {
+		return fmt.Errorf("conn.WriteTo: %w", err)
+	}
+	if len(data) != n {
+		return fmt.Errorf("len(data) != n")
 	}
 
 	return nil
