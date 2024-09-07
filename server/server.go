@@ -5,14 +5,17 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/Piggey/bsr/packet"
 	"github.com/Piggey/bsr/util"
 )
 
 type Server struct {
-	conn   net.PacketConn
-	logger *slog.Logger
+	conn           net.PacketConn
+	logger         *slog.Logger
+	clientSessions sync.Map
+	gameSessions   sync.Map
 }
 
 func NewServer(network, addr string) (*Server, error) {
@@ -29,8 +32,10 @@ func NewServer(network, addr string) (*Server, error) {
 	logger.Info("server created")
 
 	return &Server{
-		conn:   conn,
-		logger: logger,
+		conn:           conn,
+		logger:         logger,
+		clientSessions: sync.Map{},
+		gameSessions:   sync.Map{},
 	}, nil
 }
 
@@ -43,91 +48,83 @@ func (s *Server) Listen() error {
 	s.logger.Info("started listening")
 
 	for {
-		packetType, addr, err := s.readPacketType()
+		p, addr, err := s.packetReadFrom()
 		if err != nil {
-			return fmt.Errorf("s.readPacketType: %w", err)
+			// czy chce tu haltowac caly serwer w sumie?
+			s.logger.Error("couldnt read packet", slog.Any("err", err))
+			continue
 		}
 
-		s.logger.Info("received packet", slog.String("packet", packetType.String()))
+		sessionId, ok := s.getSessionId(addr, p)
+		if !ok {
+			s.logger.Warn("couldnt find sessionId for client", slog.Any("addr", addr))
+			continue
+		}
 
-		switch packetType {
-		case packet.PacketTypeProtocolHandshakeRequest:
-			err = s.handleProtocolHandshake(addr)
+		gameSession, ok := s.getGameSession(sessionId, p)
+		if !ok {
+			s.logger.Warn("couldnt find game session for sessionId", slog.Any("sessionId", sessionId))
+			continue
 		}
-		if err != nil {
-			return fmt.Errorf("%s: %w", packetType, err)
-		}
+		_ = gameSession
 	}
 }
 
-func (s *Server) handleProtocolHandshake(addr net.Addr) error {
-	pphReq := packet.PacketProtocolHandshakeRequest{}
-	_, err := s.readPacket(&pphReq)
-	if err != nil {
-		return fmt.Errorf("s.readPacket: %w", err)
-	}
-
-	pphRes := packet.PacketProtocolHandshakeResponse{}
-	switch pphReq.ProtocolVersion {
-	case packet.ProtoV1:
-		pphRes.Status = packet.HandshakeStatusOK
-	default:
-		pphRes.Status = packet.HandshakeStatusProtocolNotSupported
-	}
-
-	err = s.writePacket(&pphRes, addr)
-	if err != nil {
-		return fmt.Errorf("s.writePacket: %w", err)
-	}
-
-	return nil
+func (s *Server) getGameSession(sessionId uint8, p packet.Packet) (gameSession, bool) {
+	panic("implement")
 }
 
+func (s *Server) getSessionId(addr net.Addr, p packet.Packet) (uint8, bool) {
+	sessionId, ok := s.clientSessions.Load(addr)
+	if !ok {
+		switch v := p.(type) {
+		case packet.JoinGameReq:
+			// wasnt stored yet
+			s.logger.Info("storing new session id", slog.Any("addr", addr), slog.Any("sessionId", v.SessionId))
+			s.clientSessions.Store(addr, v.SessionId)
+			sessionId = v.SessionId
+		default:
+			return 0, false
+		}
+	}
 
-func (s *Server) readPacketType() (packet.PacketType, net.Addr, error) {
-	buf := make([]byte, 1)
+	return sessionId.(uint8), true
+}
+
+func (s *Server) packetReadFrom() (packet.Packet, net.Addr, error) {
+	// read header
+	buf := make([]byte, packet.HeaderSize)
+
 	n, addr, err := s.conn.ReadFrom(buf)
 	if err != nil {
-		return 0, nil, fmt.Errorf("conn.ReadFrom: %w", err)
+		return nil, nil, fmt.Errorf("header: conn.ReadFrom: %w", err)
 	}
-	if n != 1 {
-		return 0, nil, fmt.Errorf("read %d bytes instead of 1", n)
+	if n != packet.HeaderSize {
+		return nil, nil, fmt.Errorf("header: conn.ReadFrom: n != packet.HeaderSize")
 	}
 
-	return packet.PacketType(buf[0]), addr, nil
-}
-
-func (s *Server) readPacket(p packet.Packet) (net.Addr, error) {
-	data := make([]byte, p.Size())
-	n, addr, err := s.conn.ReadFrom(data)
+	header, err := packet.UnmarshalHeader(buf)
 	if err != nil {
-		return nil, fmt.Errorf("conn.ReadFrom: %w", err)
-	}
-	if len(data) != n {
-		return nil, fmt.Errorf("len(data) != n")
+		return nil, nil, fmt.Errorf("packet.UnmarshalHeader: %w", err)
 	}
 
-	err = p.FromBytes(data)
+	// read packet
+	buf = make([]byte, header.Size)
+	n, addr2, err := s.conn.ReadFrom(buf)
 	if err != nil {
-		return nil, fmt.Errorf("p.FromBytes: %w", err)
+		return nil, nil, fmt.Errorf("packet: conn.ReadFrom: %w", err)
+	}
+	if n != int(header.Size) {
+		return nil, nil, fmt.Errorf("packet: conn.ReadFrom: n != int(header.Size)")
+	}
+	if addr != addr2 {
+		return nil, nil, fmt.Errorf("packet: conn.ReadFrom: addr != addr2")
 	}
 
-	return addr, nil
-}
-
-func (s *Server) writePacket(p packet.Packet, addr net.Addr) error {
-	data, err := p.ToBytes()
+	p, err := packet.Unmarshal(buf, header.Type)
 	if err != nil {
-		return fmt.Errorf("p.ToBytes: %w", err)
+		return nil, nil, fmt.Errorf("packet.Unmarshal: %w", err)
 	}
 
-	n, err := s.conn.WriteTo(data, addr)
-	if err != nil {
-		return fmt.Errorf("conn.WriteTo: %w", err)
-	}
-	if len(data) != n {
-		return fmt.Errorf("len(data) != n")
-	}
-
-	return nil
+	return p, addr, nil
 }

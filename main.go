@@ -47,11 +47,6 @@ func main() {
 		}
 		defer c.Close()
 
-		err = c.Handshake()
-		if err != nil {
-			log.Fatalf("c.Handshake: %v", err)
-		}
-
 	case "client pvp":
 		panic("unimplemented")
 	}
