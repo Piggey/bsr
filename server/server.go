@@ -12,10 +12,9 @@ import (
 )
 
 type Server struct {
-	conn           net.PacketConn
-	logger         *slog.Logger
-	clientSessions sync.Map
-	gameSessions   sync.Map
+	conn    net.PacketConn
+	logger  *slog.Logger
+	session *gameSession
 }
 
 func NewServer(network, addr string) (*Server, error) {
@@ -32,10 +31,8 @@ func NewServer(network, addr string) (*Server, error) {
 	logger.Info("server created")
 
 	return &Server{
-		conn:           conn,
-		logger:         logger,
-		clientSessions: sync.Map{},
-		gameSessions:   sync.Map{},
+		conn:   conn,
+		logger: logger,
 	}, nil
 }
 
@@ -55,40 +52,9 @@ func (s *Server) Listen() error {
 			continue
 		}
 
-		sessionId, ok := s.getSessionId(addr, p)
-		if !ok {
-			s.logger.Warn("couldnt find sessionId for client", slog.Any("addr", addr))
-			continue
-		}
+		s.handlePacket(p, addr)
 
-		gameSession, ok := s.getGameSession(sessionId, p)
-		if !ok {
-			s.logger.Warn("couldnt find game session for sessionId", slog.Any("sessionId", sessionId))
-			continue
-		}
-		_ = gameSession
 	}
-}
-
-func (s *Server) getGameSession(sessionId uint8, p packet.Packet) (gameSession, bool) {
-	panic("implement")
-}
-
-func (s *Server) getSessionId(addr net.Addr, p packet.Packet) (uint8, bool) {
-	sessionId, ok := s.clientSessions.Load(addr)
-	if !ok {
-		switch v := p.(type) {
-		case packet.JoinGameReq:
-			// wasnt stored yet
-			s.logger.Info("storing new session id", slog.Any("addr", addr), slog.Any("sessionId", v.SessionId))
-			s.clientSessions.Store(addr, v.SessionId)
-			sessionId = v.SessionId
-		default:
-			return 0, false
-		}
-	}
-
-	return sessionId.(uint8), true
 }
 
 func (s *Server) packetReadFrom() (packet.Packet, net.Addr, error) {

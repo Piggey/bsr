@@ -1,7 +1,14 @@
 package server
 
-import "github.com/Piggey/bsr/game"
+import (
+	"net"
+
+	"github.com/Piggey/bsr/game"
+)
 
 type gameSession struct {
-	g *game.Game
+	g         *game.Game
+	playerIds map[net.Addr]uint8
+	mode      game.Mode
+	noPlayers uint8
 }

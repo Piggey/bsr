@@ -37,4 +37,3 @@ func (c *Client) Close() error {
 	c.logger.Info("client closing")
 	return c.conn.Close()
 }
-
