@@ -2,10 +2,11 @@ package packet
 
 import "github.com/Piggey/bsr/game"
 
+// TODO: go-validator on this hoe
 type JoinGameReq struct {
 	ProtocolVersion uint8
 	GameMode        game.Mode
-	NoPlayers       uint8
+	PlayersNo       uint8
 }
 
 func (JoinGameReq) Type() Type {
@@ -14,7 +15,7 @@ func (JoinGameReq) Type() Type {
 
 type JoinGameRes struct {
 	Code     StatusCode
-	PlayerId uint8
+	PlayerId int
 }
 
 func (JoinGameRes) Type() Type {

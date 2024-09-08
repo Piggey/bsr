@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"sync"
+	"slices"
 
 	"github.com/Piggey/bsr/packet"
 	"github.com/Piggey/bsr/util"
@@ -14,7 +14,7 @@ import (
 type Server struct {
 	conn    net.PacketConn
 	logger  *slog.Logger
-	session *gameSession
+	session *session
 }
 
 func NewServer(network, addr string) (*Server, error) {
@@ -47,13 +47,25 @@ func (s *Server) Listen() error {
 	for {
 		p, addr, err := s.packetReadFrom()
 		if err != nil {
-			// czy chce tu haltowac caly serwer w sumie?
 			s.logger.Error("couldnt read packet", slog.Any("err", err))
 			continue
 		}
 
-		s.handlePacket(p, addr)
+		outPackets, err := s.handlePacket(p, addr)
+		if err != nil {
+			s.logger.Error("couldnt handle packet", slog.Any("err", err))
+			continue
+		}
 
+		for addr, packets := range outPackets {
+			for _, p := range packets {
+				err := s.packetWriteTo(addr, p)
+				if err != nil {
+					s.logger.Error("could write packet", slog.Any("type", p.Type()), slog.Any("addr", addr))
+					continue
+				}
+			}
+		}
 	}
 }
 
@@ -93,4 +105,30 @@ func (s *Server) packetReadFrom() (packet.Packet, net.Addr, error) {
 	}
 
 	return p, addr, nil
+}
+
+func (s *Server) packetWriteTo(addr net.Addr, outp packet.Packet) error {
+	outpBytes, err := packet.Marshal(outp)
+	if err != nil {
+		return fmt.Errorf("packet.Marshal: %w", err)
+	}
+
+	ph := packet.Header{
+		Type: outp.Type(),
+		Size: len(outpBytes),
+	}
+	phBytes, err := packet.MarshalHeader(ph)
+	if err != nil {
+		return fmt.Errorf("packet.MarshalHeader: %w", err)
+	}
+
+	n, err := s.conn.WriteTo(slices.Concat(phBytes, outpBytes), addr)
+	if err != nil {
+		return fmt.Errorf("conn.WriteTo: %w", err)
+	}
+	if len(outpBytes) + len(phBytes) != n {
+		return fmt.Errorf("len(outpBytes) + len(phBytes) != n")
+	}
+
+	return nil
 }

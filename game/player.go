@@ -1,14 +1,12 @@
 package game
 
 type player struct {
-	name   string
 	health uint8
 	items  [8]GameItem
 }
 
-func newPlayer(name string) player {
+func newPlayer() player {
 	return player{
-		name:   name,
 		health: 2,
 		items:  [8]GameItem{},
 	}

@@ -6,7 +6,19 @@ const HeaderSize = 3
 
 type Header struct {
 	Type Type
-	Size uint16
+	Size int // uint16 is being sent
+}
+
+func MarshalHeader(h Header) ([]byte, error) {
+	if h.Size > 0xffff {
+		return nil, fmt.Errorf("packet size too large")
+	}
+
+	return []byte{
+		byte(h.Type),
+		byte(h.Size >> 8), // hi
+		byte(h.Size),      // lo
+	}, nil
 }
 
 func UnmarshalHeader(p []byte) (Header, error) {
@@ -16,6 +28,6 @@ func UnmarshalHeader(p []byte) (Header, error) {
 
 	return Header{
 		Type: Type(p[0]),
-		Size: uint16(p[1])<<8 | uint16(p[2]),
+		Size: int(p[1])<<8 | int(p[2]),
 	}, nil
 }
