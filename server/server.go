@@ -11,7 +11,6 @@ import (
 	"github.com/Piggey/bsr/game"
 	pb "github.com/Piggey/bsr/proto"
 	"github.com/Piggey/bsr/util"
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 )
 
@@ -62,40 +61,37 @@ func (s *Server) Listen() error {
 	return s.srv.Serve(s.lis)
 }
 
-func (s *Server) CreateGame(ctx context.Context, cg *pb.CreateGameRequest) (*pb.CreateGameResponse, error) {
-	s.logger.Info("creating a new game")
-
-	gameUuid := uuid.NewString()
-	g := game.NewGame()
-	playerUuid := g.AddPlayer(cg.PlayerName)
-
-	s.games.Store(gameUuid, g)
-
-	return &pb.CreateGameResponse{
-		Version:    pb.BsrProtoV1,
-		GameUuid:   gameUuid,
-		PlayerUuid: playerUuid,
-	}, nil
-}
-
 func (s *Server) JoinGame(ctx context.Context, jg *pb.JoinGameRequest) (*pb.JoinGameResponse, error) {
 	g, ok := s.getGame(jg.GameUuid)
 	if !ok {
-		return nil, fmt.Errorf("game %s does not exist", jg.GameUuid)
+		if jg.MaxPlayerCount == nil {
+			return nil, fmt.Errorf("s.createNewGame: player_count is nil")
+		}
+
+		g = s.createNewGame(jg.GameMode, jg.GameUuid, *jg.MaxPlayerCount)
 	}
 	g.Lock()
 	defer g.Unlock()
+	defer s.games.Store(jg.GameUuid, g)
 
-	playerUuid := g.AddPlayer(jg.PlayerName)
-	s.games.Store(jg.GameUuid, g)
+	playerUuid, err := g.AddPlayer(jg.PlayerName)
+	if err != nil {
+		return nil, fmt.Errorf("g.AddPlayer: %w", err)
+	}
 
 	s.logger.Info("player joined game", slog.String("gameUuid", jg.GameUuid), slog.String("player", jg.PlayerName))
 
 	return &pb.JoinGameResponse{
-		Version:    pb.BsrProtoV1,
-		GameUuid:   jg.GameUuid,
-		PlayerUuid: playerUuid,
+		GameUuid:    jg.GameUuid,
+		PlayerUuid:  playerUuid,
+		GameStarted: g.PlayerCount() == g.MaxPlayerCount(),
 	}, nil
+}
+
+func (s *Server) createNewGame(mode pb.GameMode, id string, maxPlayerCount uint32) *game.Game {
+	g := game.NewGame(mode, maxPlayerCount)
+	s.games.Store(id, g)
+	return g
 }
 
 func (s *Server) getGame(gameUuid string) (g *game.Game, ok bool) {
