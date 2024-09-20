@@ -8,6 +8,7 @@ import (
 
 	pb "github.com/Piggey/bsr/proto"
 	"github.com/Piggey/bsr/util"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 )
 
@@ -44,19 +45,22 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Client) NewGame(mode pb.GameMode) error {
-	ctx := context.Background()
+func (c *Client) JoinGame(ctx context.Context, mode pb.GameMode) error {
 	c.logger.Info("starting new game", slog.String("mode", mode.String()))
 
-	cg, err := c.bsrc.CreateGame(ctx, &pb.CreateGameRequest{
-		Version:    pb.BsrProtoV1,
-		PlayerName: c.name,
-		Mode:       mode,
+	pveMaxPlayerCount := uint32(2)
+
+	joinGameRes, err := c.bsrc.JoinGame(ctx, &pb.JoinGameRequest{
+		Version:        pb.BsrV1,
+		GameUuid:       uuid.NewString(),
+		GameMode:       pb.GameMode_PVE,
+		PlayerName:     c.name,
+		MaxPlayerCount: &pveMaxPlayerCount,
 	})
 	if err != nil {
-		return fmt.Errorf("bsrc.CreateGame: %w", err)
+		return fmt.Errorf("c.bsrc.JoinGame: %w", err)
 	}
 
-	_ = cg
+	c.logger.Info("joined game", slog.String("playerUuid", joinGameRes.PlayerUuid))
 	return nil
 }

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/Piggey/bsr/client"
 	bsr "github.com/Piggey/bsr/proto"
@@ -13,8 +15,9 @@ var args struct {
 	Client struct {
 		ServerAddr string  `help:"server address" required:""`
 		Addr       *string `help:"optional client address, defaults to first available port"`
+		Name       string  `help:"client name" default:"player1"`
 		Pvp        struct {
-			GameId uint8 `help:"game id to connect players to the same game" required:""`
+			GameUuid uint8 `help:"game id to connect players to the same game" required:""`
 		} `cmd:""`
 		Pve struct{} `cmd:""`
 	} `cmd:"" help:"run as client"`
@@ -40,13 +43,16 @@ func main() {
 		}
 
 	case "client pve":
-		c, err := client.NewClient("player1", args.Client.ServerAddr)
+		c, err := client.NewClient(args.Client.Name, args.Client.ServerAddr)
 		if err != nil {
 			log.Fatalf("client.NewClient: %v", err)
 		}
 		defer c.Close()
 
-		err = c.NewGame(bsr.GameMode_PVE)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err = c.JoinGame(ctx, bsr.GameMode_PVE)
 		if err != nil {
 			log.Fatalf("client.StartNewGame: %v", err)
 		}

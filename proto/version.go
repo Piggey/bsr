@@ -1,3 +1,3 @@
 package bsr
 
-const BsrProtoV1 = 1
+const BsrV1 = 1
