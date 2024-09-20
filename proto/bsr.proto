@@ -18,8 +18,7 @@ message JoinGameRequest {
   string game_uuid = 2;
   GameMode game_mode = 3;
   string player_name = 4;
-  optional uint32 player_count = 5;
-  optional uint32 games_no = 6;
+  optional uint32 max_player_count = 5;
 }
 
 message JoinGameResponse {
