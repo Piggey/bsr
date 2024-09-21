@@ -6,20 +6,16 @@ import (
 	"time"
 
 	"github.com/Piggey/bsr/client"
-	bsr "github.com/Piggey/bsr/proto"
 	"github.com/Piggey/bsr/server"
 	"github.com/alecthomas/kong"
 )
 
 var args struct {
 	Client struct {
-		ServerAddr string  `help:"server address" required:""`
-		Addr       *string `help:"optional client address, defaults to first available port"`
-		Name       string  `help:"client name" default:"player1"`
-		Pvp        struct {
-			GameUuid uint8 `help:"game id to connect players to the same game" required:""`
-		} `cmd:""`
-		Pve struct{} `cmd:""`
+		ServerAddr     string  `help:"server address" required:""`
+		Addr           *string `help:"optional client address, defaults to first available port"`
+		Name           string  `help:"client name" default:"player1"`
+		MaxPlayerCount uint32  `help:"number of players in a lobby" default:"2"`
 	} `cmd:"" help:"run as client"`
 	Server struct {
 		Addr string `help:"server address" default:":5000"`
@@ -42,7 +38,7 @@ func main() {
 			log.Fatalf("srv.Listen: %v", err)
 		}
 
-	case "client pve":
+	case "client":
 		c, err := client.NewClient(args.Client.Name, args.Client.ServerAddr)
 		if err != nil {
 			log.Fatalf("client.NewClient: %v", err)
@@ -52,12 +48,9 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		err = c.JoinGame(ctx, bsr.GameMode_PVE)
+		err = c.JoinGame(ctx, args.Client.MaxPlayerCount)
 		if err != nil {
 			log.Fatalf("client.StartNewGame: %v", err)
 		}
-
-	case "client pvp":
-		panic("unimplemented")
 	}
 }

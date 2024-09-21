@@ -1,8 +1,9 @@
 package game
 
-type GameItem uint8
+type GameItem uint32
 
 const (
+	ItemNothing         GameItem = 0
 	ItemMagnifyingGlass GameItem = 1
 	ItemCigarettes      GameItem = 2
 	ItemBeer            GameItem = 3
@@ -10,9 +11,10 @@ const (
 	ItemHandcuffs       GameItem = 5
 )
 
-func (gi GameItem) String() string {
-	str := ""
+func (gi GameItem) String() (str string) {
 	switch gi {
+	case ItemNothing:
+		str = "Nothing"
 	case ItemMagnifyingGlass:
 		str = "MagnifyingGlass"
 	case ItemCigarettes:

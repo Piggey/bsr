@@ -7,22 +7,38 @@ service Bsr {
   rpc JoinGame (JoinGameRequest) returns (JoinGameResponse);
 }
 
-enum GameMode {
-  UNSPECIFIED = 0;
-  PVP = 1;
-  PVE = 2;
-}
-
 message JoinGameRequest {
   uint32 version = 1;
   string game_uuid = 2;
-  GameMode game_mode = 3;
   string player_name = 4;
-  optional uint32 max_player_count = 5;
+  uint32 max_player_count = 5;
 }
 
 message JoinGameResponse {
   string game_uuid = 2;
   string player_uuid = 3;
   bool game_started = 4;
+  optional GameState game_state = 5;
+}
+
+message GameState {
+  uint32 round = 1;
+  Shotgun shotgun = 2;
+  map<string, Player> players = 3;
+  bool done = 123;
+}
+
+message Shotgun {
+  uint32 shells_left = 1;
+  uint32 dmg = 2;
+}
+
+message Player {
+  uint32 health = 1;
+  repeated GameItem items = 2;
+}
+
+message GameItem {
+  uint32 id = 1;
+  string name = 2;
 }

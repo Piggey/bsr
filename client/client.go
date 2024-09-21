@@ -10,6 +10,7 @@ import (
 	"github.com/Piggey/bsr/util"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
@@ -20,7 +21,7 @@ type Client struct {
 }
 
 func NewClient(name, srvAddr string) (*Client, error) {
-	conn, err := grpc.NewClient(srvAddr)
+	conn, err := grpc.NewClient(srvAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("grpc.NewClient: %w", err)
 	}
@@ -45,17 +46,14 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Client) JoinGame(ctx context.Context, mode pb.GameMode) error {
-	c.logger.Info("starting new game", slog.String("mode", mode.String()))
-
-	pveMaxPlayerCount := uint32(2)
+func (c *Client) JoinGame(ctx context.Context, maxPlayerCount uint32) error {
+	c.logger.Info("starting new game")
 
 	joinGameRes, err := c.bsrc.JoinGame(ctx, &pb.JoinGameRequest{
 		Version:        pb.BsrV1,
 		GameUuid:       uuid.NewString(),
-		GameMode:       pb.GameMode_PVE,
 		PlayerName:     c.name,
-		MaxPlayerCount: &pveMaxPlayerCount,
+		MaxPlayerCount: maxPlayerCount,
 	})
 	if err != nil {
 		return fmt.Errorf("c.bsrc.JoinGame: %w", err)

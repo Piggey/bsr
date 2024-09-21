@@ -64,33 +64,37 @@ func (s *Server) Listen() error {
 func (s *Server) JoinGame(ctx context.Context, jg *pb.JoinGameRequest) (*pb.JoinGameResponse, error) {
 	g, ok := s.getGame(jg.GameUuid)
 	if !ok {
-		if jg.MaxPlayerCount == nil {
-			return nil, fmt.Errorf("s.createNewGame: player_count is nil")
-		}
-
-		g = s.createNewGame(jg.GameMode, jg.GameUuid, *jg.MaxPlayerCount)
+		g = s.createNewGame(jg.GameUuid, jg.MaxPlayerCount)
 	}
 	g.Lock()
 	defer g.Unlock()
-	defer s.games.Store(jg.GameUuid, g)
 
 	playerUuid, err := g.AddPlayer(jg.PlayerName)
 	if err != nil {
 		return nil, fmt.Errorf("g.AddPlayer: %w", err)
 	}
 
+	gameStarted := g.PlayerCount() == g.MaxPlayerCount()
+
+	var gs *pb.GameState
+	if gameStarted {
+		gs = g.ToGameState()
+	}
+
+	s.games.Store(jg.GameUuid, g)
 	s.logger.Info("player joined game", slog.String("gameUuid", jg.GameUuid), slog.String("player", jg.PlayerName))
 
 	return &pb.JoinGameResponse{
 		GameUuid:    jg.GameUuid,
 		PlayerUuid:  playerUuid,
-		GameStarted: g.PlayerCount() == g.MaxPlayerCount(),
+		GameStarted: gameStarted,
+		GameState:   gs,
 	}, nil
 }
 
-func (s *Server) createNewGame(mode pb.GameMode, id string, maxPlayerCount uint32) *game.Game {
-	g := game.NewGame(mode, maxPlayerCount)
-	s.games.Store(id, g)
+func (s *Server) createNewGame(gameUuid string, maxPlayerCount uint32) *game.Game {
+	g := game.NewGame(maxPlayerCount)
+	s.games.Store(gameUuid, g)
 	return g
 }
 

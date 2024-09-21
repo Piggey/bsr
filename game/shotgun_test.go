@@ -6,9 +6,9 @@ import (
 
 func Test_shotgun_LiveShells(t *testing.T) {
 	type fields struct {
-		shellsLeft uint8
+		shellsLeft uint32
 		chamber    uint8
-		dmg        uint8
+		dmg        uint32
 	}
 	tests := []struct {
 		name   string
@@ -48,14 +48,14 @@ func Test_shotgun_LiveShells(t *testing.T) {
 
 func Test_shotgun_Shoot(t *testing.T) {
 	type fields struct {
-		shellsLeft uint8
+		shellsLeft uint32
 		chamber    uint8
-		dmg        uint8
+		dmg        uint32
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   uint8
+		want   uint32
 	}{
 		{
 			name: "normal, live",

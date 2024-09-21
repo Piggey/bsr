@@ -3,13 +3,14 @@ package game
 import "math/rand"
 
 type shotgun struct {
-	shellsLeft uint8
-	chamber    uint8 // 1 for live, 0 for blank
-	dmg        uint8
+	shellsLeft uint32
+	dmg        uint32
+
+	chamber uint8 // 1 for live, 0 for blank
 }
 
 func newShotgun() shotgun {
-	shells := uint8(rand.Int()%(8-2+1) + 2) // [2; 8]
+	shells := uint32(rand.Int()%(8-2+1) + 2) // [2; 8]
 	chamber := setChamber(shells)
 
 	return shotgun{
@@ -20,13 +21,13 @@ func newShotgun() shotgun {
 }
 
 // returns dmg dealt, 0 when blank, 1 when normal, 2 when handsaw used
-func (s *shotgun) Shoot() uint8 {
+func (s *shotgun) Shoot() uint32 {
 	shell := s.chamber & 1
 
 	s.chamber >>= 1
 	s.shellsLeft -= 1
 
-	return shell * s.dmg
+	return uint32(shell) * s.dmg
 }
 
 func (s *shotgun) LiveShells() uint8 {
@@ -57,7 +58,7 @@ func (s *shotgun) BlankShells() uint8 {
 	return blanks
 }
 
-func setChamber(shells uint8) uint8 {
+func setChamber(shells uint32) uint8 {
 	chamber := uint8(0)
 
 	for i := 0; i < int(shells); i++ {
